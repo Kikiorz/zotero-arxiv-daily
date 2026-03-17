@@ -109,3 +109,8 @@ class CorpusPaper:
     abstract: str
     added_date: datetime
     paths: list[str]
+    tags: list[str] = None
+
+    def __post_init__(self):
+        if self.tags is None:
+            self.tags = []

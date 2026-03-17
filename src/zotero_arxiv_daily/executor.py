@@ -34,12 +34,16 @@ class Executor:
         for c in corpus:
             paths = [get_collection_path(col) for col in c['data']['collections']]
             c['paths'] = paths
+            # Extract tags
+            tags = [tag['tag'] for tag in c['data'].get('tags', [])]
+            c['tags'] = tags
         logger.info(f"Fetched {len(corpus)} zotero papers")
         return [CorpusPaper(
             title=c['data']['title'],
             abstract=c['data']['abstractNote'],
             added_date=datetime.strptime(c['data']['dateAdded'], '%Y-%m-%dT%H:%M:%SZ'),
-            paths=c['paths']
+            paths=c['paths'],
+            tags=c['tags']
         ) for c in corpus]
     
     def filter_corpus(self, corpus:list[CorpusPaper]) -> list[CorpusPaper]:

@@ -41,6 +41,20 @@ reranker:
     base_url: null # API URL of your embedding model API. Example: https://api.openai.com/v1
     model: null # The model name of the embedding model. Example: text-embedding-3-large
     batch_size: null # The batch size for embedding API requests. Adjust to match your provider's limit. Example: 64
+  tag_weights:
+  # 5-star rating system for Zotero tags. Papers with higher star ratings will have more influence on recommendations.
+  # You can add these tags in Zotero to rate papers by relevance to your research interests.
+    ⭐⭐⭐⭐⭐: 5.0  # 5 stars - extremely relevant to your research
+    ⭐⭐⭐⭐: 4.0    # 4 stars - very relevant
+    ⭐⭐⭐: 3.0      # 3 stars - relevant
+    ⭐⭐: 2.0        # 2 stars - somewhat relevant
+    ⭐: 1.5          # 1 star - slightly relevant
+    5-star: 5.0     # Alternative text format
+    4-star: 4.0
+    3-star: 3.0
+    2-star: 2.0
+    1-star: 1.5
+  feedback_file: feedback.yaml # Path to the feedback file for tracking paper interests
 
 executor:
   debug: false # Whether to use debug mode. Example: true
