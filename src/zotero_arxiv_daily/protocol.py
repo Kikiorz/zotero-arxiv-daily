@@ -49,17 +49,26 @@ class Paper:
             messages=[
                 {
                     "role": "system",
-                    "content": f"""You are an expert research assistant. Create a comprehensive yet concise summary in {lang}.
+                    "content": f"""You are an expert research assistant specializing in AI, Computer Science, Large Language Models, Robotics, Automation, and Mathematics.
 
-Format (MUST follow exactly):
-**TLDR:** [3-4 sentences covering: 1) Main contribution/problem, 2) Key technical approach/method details, 3) Why it matters/results, 4) Any surprising findings]
-**Keywords:** [4-6 keywords: domain, method, technical details, application]
+Create a CONCISE technical summary in {lang} following this EXACT structure:
+
+TLDR: [Problem] [Motivation] [Method - FOCUS HERE with technical details] [Results]
+
+Format requirements:
+- Total length: 2-3 sentences maximum
+- Use precise technical terminology from AI/CS/Robotics/Math domains
+- Method section should be 50% of the content with specific technical components
+- Be quantitative when possible (e.g., "reduces memory by 60%", "achieves 95% accuracy")
+
+Keywords: [4-6 technical keywords from the paper's domain]
 
 Example:
-**TLDR:** This paper introduces a sparse attention mechanism that reduces memory usage by 60% in vision transformers while maintaining comparable accuracy to dense attention. The key innovation is a learnable token selection module that dynamically identifies and prunes less important tokens based on their attention scores, combined with a lightweight reconstruction loss to preserve semantic information. The method is particularly effective for high-resolution images and can be easily integrated into existing architectures with minimal code changes. Experiments show surprising improvements on small datasets, suggesting the approach also acts as an implicit regularizer.
-**Keywords:** Computer Vision, Sparse Attention, Vision Transformers, Token Pruning, Efficient Deep Learning, High-Resolution Images
+TLDR: Existing vision transformers suffer from quadratic memory complexity limiting their use on high-resolution images. This paper proposes a sparse attention mechanism using learnable token pruning based on attention scores (top-k selection with k=0.3N) combined with a reconstruction loss (λ=0.1) to preserve semantic information. Achieves 60% memory reduction while maintaining 94.2% accuracy on ImageNet, with surprising 2.1% improvement on small datasets due to implicit regularization.
 
-Be specific about the METHOD - mention the key technical components, architecture choices, or algorithmic innovations. Focus on what makes this paper technically interesting and practically useful.""",
+Keywords: Vision Transformers, Sparse Attention, Token Pruning, Efficient Deep Learning
+
+CRITICAL: Do NOT use ** for formatting. Keep it plain text. Be technical and precise.""",
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -68,8 +77,8 @@ Be specific about the METHOD - mention the key technical components, architectur
         tldr_en = response.choices[0].message.content
 
         # Extract keywords if present
-        if "**Keywords:**" in tldr_en:
-            parts = tldr_en.split("**Keywords:**")
+        if "Keywords:" in tldr_en:
+            parts = tldr_en.split("Keywords:")
             if len(parts) == 2:
                 keywords_text = parts[1].strip()
                 self.keywords = [k.strip() for k in keywords_text.split(',')]
@@ -96,7 +105,13 @@ Intelligent Semantic Completion: Use your specialized knowledge in robotics and 
 
 Tone and Style: Maintain a formal, rigorous academic tone consistent with top-tier conferences like CoRL, RSS, or ICRA.
 
-Output Format: Keep the same format with **TLDR:** and **Keywords:** markers in Chinese (使用 **摘要:** 和 **关键词:**).
+Output Format: Keep the same format with TLDR: and Keywords: markers in Chinese (使用 摘要: 和 关键词:). Do NOT use ** for bold.
+
+Keywords Translation: Translate each keyword individually and keep them in the SAME ORDER as the English version. Format: 关键词: [中文1, 中文2, 中文3, ...]
+
+Example:
+English: Keywords: Computer Vision, Sparse Attention, Vision Transformers
+Chinese: 关键词: 计算机视觉, 稀疏注意力, 视觉Transformer
 
 Output Constraints: Provide only the translated result without any additional explanation.""",
                     },
@@ -128,7 +143,7 @@ Output Constraints: Provide only the translated result without any additional ex
 
     def _generate_affiliations_with_llm(self, openai_client:OpenAI,llm_params:dict) -> Optional[list[str]]:
         if self.full_text is not None:
-            prompt = f"Given the beginning of a paper, extract the affiliations of the authors in a python list format, which is sorted by the author order. If there is no affiliation found, return an empty list '[]':\n\n{self.full_text}"
+            prompt = f"Given the beginning of a paper, extract the PRIMARY institutions (universities/labs) of the authors:\n\n{self.full_text}"
             # use gpt-4o tokenizer for estimation
             enc = tiktoken.encoding_for_model("gpt-4o")
             prompt_tokens = enc.encode(prompt)
@@ -138,7 +153,27 @@ Output Constraints: Provide only the translated result without any additional ex
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are an assistant who perfectly extracts affiliations of authors from a paper. You should return a python list of affiliations sorted by the author order, like [\"TsingHua University\",\"Peking University\"]. If an affiliation is consisted of multi-level affiliations, like 'Department of Computer Science, TsingHua University', you should return the top-level affiliation 'TsingHua University' only. Do not contain duplicated affiliations. If there is no affiliation found, you should return an empty list [ ]. You should only return the final list of affiliations, and do not return any intermediate results.",
+                        "content": """You are an expert at extracting institutional affiliations from academic papers.
+
+Task: Extract the PRIMARY institutions (universities and research labs) where the work was conducted.
+
+Output format: Python list of strings, e.g., ["MIT CSAIL", "Stanford AI Lab", "Google DeepMind"]
+
+Rules:
+1. Include BOTH university name AND lab/department if mentioned (e.g., "MIT CSAIL" not just "MIT")
+2. For industry labs, include company and lab name (e.g., "Google DeepMind", "Meta FAIR")
+3. Keep in author order (first author's institution first)
+4. Remove duplicates
+5. Use official English names
+6. If no affiliation found, return []
+
+Examples:
+- "MIT Computer Science and Artificial Intelligence Laboratory" → "MIT CSAIL"
+- "Stanford University, Department of Computer Science" → "Stanford CS"
+- "Google Research, Brain Team" → "Google Brain"
+- "清华大学" → "Tsinghua University"
+
+Return ONLY the Python list, nothing else.""",
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -148,7 +183,7 @@ Output Constraints: Provide only the translated result without any additional ex
 
             affiliations = re.search(r'\[.*?\]', affiliations, flags=re.DOTALL).group(0)
             affiliations = json.loads(affiliations)
-            affiliations = list(set(affiliations))
+            affiliations = list(dict.fromkeys(affiliations))  # Remove duplicates while preserving order
             affiliations = [str(a) for a in affiliations]
 
             return affiliations

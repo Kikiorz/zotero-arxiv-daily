@@ -53,6 +53,9 @@ def get_empty_html():
   return block_template
 
 def get_block_html(title:str, authors:str, tldr:str, pdf_url:str, affiliations:str=None, match_info:str=None):
+    # Format TLDR with proper line breaks and bold markers
+    tldr_formatted = tldr.replace('\n\n', '<br><br>').replace('TLDR:', '<strong>TLDR:</strong>').replace('Keywords:', '<strong>Keywords:</strong>').replace('摘要:', '<strong>摘要:</strong>').replace('关键词:', '<strong>关键词:</strong>')
+
     block_template = """
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-family: Arial, sans-serif; border: 1px solid #ddd; border-radius: 8px; padding: 16px; background-color: #f9f9f9;">
     <tr>
@@ -85,7 +88,7 @@ def get_block_html(title:str, authors:str, tldr:str, pdf_url:str, affiliations:s
     </tr>
 </table>
 """
-    return block_template.format(title=title, authors=authors, tldr=tldr, pdf_url=pdf_url, affiliations=affiliations, match_info=match_info)
+    return block_template.format(title=title, authors=authors, tldr=tldr_formatted, pdf_url=pdf_url, affiliations=affiliations, match_info=match_info)
 
 def get_stars(score:float):
     full_star = '<span class="full-star">⭐</span>'
