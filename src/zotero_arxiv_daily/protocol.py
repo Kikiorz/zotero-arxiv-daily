@@ -20,10 +20,12 @@ class Paper:
     tldr: Optional[str] = None
     affiliations: Optional[list[str]] = None
     score: Optional[float] = None
+    keywords: Optional[list[str]] = None
+    match_info: Optional[str] = None  # Information about which starred papers this matches
 
     def _generate_tldr_with_llm(self, openai_client:OpenAI,llm_params:dict) -> str:
         lang = llm_params.get('language', 'English')
-        prompt = f"Given the following information of a paper, generate a concise TLDR summary in {lang}:\n\n"
+        prompt = f"Given the following information of a paper, generate a concise summary in {lang}:\n\n"
         if self.title:
             prompt += f"Title: {self.title}\n\n"
 
@@ -47,21 +49,31 @@ class Paper:
             messages=[
                 {
                     "role": "system",
-                    "content": f"""You are an expert research assistant who creates insightful paper summaries. Your summaries should be in {lang}.
+                    "content": f"""You are an expert research assistant. Create a concise summary in {lang}.
 
-Your TLDR should:
-1. Highlight the KEY INNOVATION or main contribution (what's new?)
-2. Mention the PRACTICAL IMPACT or application (why does it matter?)
-3. Note any SURPRISING or INTERESTING findings (what's unexpected?)
-4. Be concise but informative (2-3 sentences max)
+Format (MUST follow exactly):
+**TLDR:** [2-3 sentences: What's the main contribution? Why does it matter? Any surprising results?]
+**Keywords:** [3-5 keywords: domain, method, application]
 
-Focus on what makes this paper stand out and why a researcher would want to read it.""",
+Example:
+**TLDR:** This paper introduces a sparse attention mechanism that reduces memory usage by 60% in vision transformers while maintaining comparable accuracy to dense attention. The method is particularly effective for high-resolution images and can be easily integrated into existing architectures. Experiments show surprising improvements on small datasets.
+**Keywords:** Computer Vision, Sparse Attention, Vision Transformers, Efficient Deep Learning
+
+Keep it informative but concise. Focus on what makes this paper interesting.""",
                 },
                 {"role": "user", "content": prompt},
             ],
             **llm_params.get('generation_kwargs', {})
         )
         tldr = response.choices[0].message.content
+
+        # Extract keywords if present
+        if "**Keywords:**" in tldr:
+            parts = tldr.split("**Keywords:**")
+            if len(parts) == 2:
+                keywords_text = parts[1].strip()
+                self.keywords = [k.strip() for k in keywords_text.split(',')]
+
         return tldr
     
     def generate_tldr(self, openai_client:OpenAI,llm_params:dict) -> str:

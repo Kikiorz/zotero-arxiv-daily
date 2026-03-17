@@ -89,13 +89,80 @@ class BaseReranker(ABC):
         diversity_bonus = self._calculate_diversity_bonus(candidates, scores, sim, combined_weight)
         scores = scores + diversity_bonus
 
-        for s,c in zip(scores,candidates):
+        # Generate match information for each candidate
+        for i, (s, c) in enumerate(zip(scores, candidates)):
             c.score = s
+            c.match_info = self._generate_match_info(sim[i], corpus, tag_weights, combined_weight)
 
         candidates = sorted(candidates,key=lambda x: x.score,reverse=True)
 
         logger.info(f"Reranked {len(candidates)} papers with tag weights (avg weight: {tag_weights.mean():.2f})")
         return candidates
+
+    def _generate_match_info(self, similarities: np.ndarray, corpus: list[CorpusPaper],
+                            tag_weights: np.ndarray, combined_weights: np.ndarray) -> str:
+        """
+        Generate information about which starred papers this candidate matches.
+        Returns a string describing the match (e.g., "Matches your 5-star papers in Computer Vision")
+        """
+        # Find top 3 most similar papers
+        top_indices = np.argsort(similarities)[-3:][::-1]
+        top_sims = similarities[top_indices]
+
+        # Get star ratings for top matches
+        star_ratings = []
+        for idx in top_indices:
+            if idx < len(corpus):
+                tags = corpus[idx].tags
+                # Determine star rating
+                if '⭐⭐⭐⭐⭐' in tags or '5-star' in tags:
+                    star_ratings.append(5)
+                elif '⭐⭐⭐⭐' in tags or '4-star' in tags:
+                    star_ratings.append(4)
+                elif '⭐⭐⭐' in tags or '3-star' in tags:
+                    star_ratings.append(3)
+                elif '⭐⭐' in tags or '2-star' in tags:
+                    star_ratings.append(2)
+                elif '⭐' in tags or '1-star' in tags:
+                    star_ratings.append(1)
+                else:
+                    star_ratings.append(0)
+
+        # Calculate average similarity and star rating
+        avg_sim = top_sims.mean()
+        max_star = max(star_ratings) if star_ratings else 0
+
+        # Determine match type
+        if avg_sim > 0.7:
+            match_type = "Highly similar to"
+        elif avg_sim > 0.5:
+            match_type = "Similar to"
+        elif avg_sim > 0.3:
+            match_type = "Related to"
+        else:
+            match_type = "Exploration beyond"
+
+        # Generate star description
+        if max_star >= 5:
+            star_desc = "your ⭐⭐⭐⭐⭐ papers"
+        elif max_star >= 4:
+            star_desc = "your ⭐⭐⭐⭐ papers"
+        elif max_star >= 3:
+            star_desc = "your ⭐⭐⭐ papers"
+        elif max_star >= 2:
+            star_desc = "your ⭐⭐ papers"
+        elif max_star >= 1:
+            star_desc = "your ⭐ papers"
+        else:
+            star_desc = "your library"
+
+        # Add diversity note if similarity is moderate
+        if 0.3 <= avg_sim <= 0.7:
+            diversity_note = " (potential new direction 🌟)"
+        else:
+            diversity_note = ""
+
+        return f"{match_type} {star_desc}{diversity_note}"
 
     def _calculate_diversity_bonus(self, candidates: list[Paper], scores: np.ndarray,
                                    sim: np.ndarray, weights: np.ndarray) -> np.ndarray:

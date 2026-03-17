@@ -52,7 +52,7 @@ def get_empty_html():
   """
   return block_template
 
-def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affiliations:str=None):
+def get_block_html(title:str, authors:str, tldr:str, pdf_url:str, affiliations:str=None, match_info:str=None):
     block_template = """
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-family: Arial, sans-serif; border: 1px solid #ddd; border-radius: 8px; padding: 16px; background-color: #f9f9f9;">
     <tr>
@@ -68,13 +68,13 @@ def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affi
         </td>
     </tr>
     <tr>
-        <td style="font-size: 14px; color: #333; padding: 8px 0;">
-            <strong>Relevance:</strong> {rate}
+        <td style="font-size: 13px; color: #0066cc; padding: 8px 0; font-style: italic;">
+            📌 {match_info}
         </td>
     </tr>
     <tr>
-        <td style="font-size: 14px; color: #333; padding: 8px 0;">
-            <strong>TLDR:</strong> {tldr}
+        <td style="font-size: 14px; color: #333; padding: 8px 0; line-height: 1.6;">
+            {tldr}
         </td>
     </tr>
 
@@ -85,7 +85,7 @@ def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affi
     </tr>
 </table>
 """
-    return block_template.format(title=title, authors=authors,rate=rate, tldr=tldr, pdf_url=pdf_url, affiliations=affiliations)
+    return block_template.format(title=title, authors=authors, tldr=tldr, pdf_url=pdf_url, affiliations=affiliations, match_info=match_info)
 
 def get_stars(score:float):
     full_star = '<span class="full-star">⭐</span>'
@@ -108,10 +108,8 @@ def render_email(papers:list[Paper]) -> str:
     parts = []
     if len(papers) == 0 :
         return framework.replace('__CONTENT__', get_empty_html())
-    
+
     for p in papers:
-        #rate = get_stars(p.score)
-        rate = round(p.score, 1) if p.score is not None else 'Unknown'
         author_list = [a for a in p.authors]
         num_authors = len(author_list)
         if num_authors <= 5:
@@ -125,7 +123,10 @@ def render_email(papers:list[Paper]) -> str:
                 affiliations += ', ...'
         else:
             affiliations = 'Unknown Affiliation'
-        parts.append(get_block_html(p.title, authors, rate, p.tldr, p.pdf_url, affiliations))
+
+        match_info = p.match_info if p.match_info else "Matched to your library"
+
+        parts.append(get_block_html(p.title, authors, p.tldr, p.pdf_url, affiliations, match_info))
 
     content = '<br>' + '</br><br>'.join(parts) + '</br>'
     return framework.replace('__CONTENT__', content)
