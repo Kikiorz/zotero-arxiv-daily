@@ -5,7 +5,7 @@ app = FastAPI()
 @app.post("/v1/chat/completions")
 async def chat_completions(request:dict):
     request_str = str(request)
-    is_affiliation = "You are an assistant who perfectly extracts affiliations" in request_str
+    is_affiliation = "extracting institutional affiliations" in request_str or "You are an assistant who perfectly extracts affiliations" in request_str
     return {'id': 'chatcmpl-CkUpDqPLWNJE4SZCoPsUbvf3RudrU',
  'created': 1765197615,
  'model': 'gpt-4o-mini-2024-07-18',
