@@ -1,0 +1,49 @@
+zotero:
+  user_id: ${oc.env:ZOTERO_ID}
+  api_key: ${oc.env:ZOTERO_KEY}
+  include_path: null
+
+email:
+  sender: ${oc.env:SENDER}
+  receiver: ${oc.env:RECEIVER}
+  smtp_server: smtp.qq.com
+  smtp_port: 465
+  sender_password: ${oc.env:SENDER_PASSWORD}
+
+llm:
+  api:
+    key: ${oc.env:OPENAI_API_KEY}
+    base_url: ${oc.env:OPENAI_API_BASE}
+  generation_kwargs:
+    model: deepseek-chat
+    max_tokens: 1536
+  language: English
+
+reranker:
+  local:  # 使用 local 更快
+    model: jinaai/jina-embeddings-v5-text-nano
+    encode_kwargs:
+      task: retrieval
+      prompt_name: document
+  tag_weights:
+    ⭐⭐⭐⭐⭐: 2.5
+    ⭐⭐⭐⭐: 2.3
+    ⭐⭐⭐: 2.0
+    ⭐⭐: 1.5
+    ⭐: 1.2
+  diversity:
+    enabled: true
+    bonus_strength: 0.3
+
+source:
+  arxiv:
+    category: ["cs.AI","cs.LG","cs.RO"]  # 减少到 3 个核心类别
+    include_cross_list: false  # 关闭 cross-list
+
+executor:
+  send_empty: false
+  max_workers: 16
+  max_paper_num: 50
+  reranker: local  # 使用 local reranker
+  debug: ${oc.env:DEBUG,null}
+  source: ['arxiv']

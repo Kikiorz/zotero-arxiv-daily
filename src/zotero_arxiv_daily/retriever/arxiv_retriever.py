@@ -52,15 +52,25 @@ class ArxivRetriever(BaseRetriever):
         authors = [a.name for a in raw_paper.authors]
         abstract = raw_paper.summary
         pdf_url = raw_paper.pdf_url
-        try:
-            with ThreadPoolExecutor(max_workers=1) as pool:
-                full_text = pool.submit(extract_text_from_pdf, raw_paper).result(timeout=PDF_EXTRACT_TIMEOUT)
-        except TimeoutError:
-            logger.warning(f"PDF extraction timed out for {raw_paper.title}")
+
+        # Check if PDF extraction should be skipped
+        skip_pdf = self.config.source.arxiv.get("skip_pdf_extraction", False)
+        pre_filter_enabled = self.config.executor.get('pre_filter_num', None) is not None
+
+        # Skip PDF if explicitly disabled OR if pre-filtering is enabled (will extract later)
+        if skip_pdf or pre_filter_enabled:
             full_text = None
-        if full_text is None:
-            full_text = extract_text_from_tar(raw_paper)
-        return Paper(
+        else:
+            try:
+                with ThreadPoolExecutor(max_workers=1) as pool:
+                    full_text = pool.submit(extract_text_from_pdf, raw_paper).result(timeout=PDF_EXTRACT_TIMEOUT)
+            except TimeoutError:
+                logger.warning(f"PDF extraction timed out for {raw_paper.title}")
+                full_text = None
+            if full_text is None:
+                full_text = extract_text_from_tar(raw_paper)
+
+        paper = Paper(
             source=self.name,
             title=title,
             authors=authors,
@@ -69,6 +79,29 @@ class ArxivRetriever(BaseRetriever):
             pdf_url=pdf_url,
             full_text=full_text
         )
+
+        # Store raw_paper for later PDF extraction if needed
+        if pre_filter_enabled:
+            paper._raw_paper = raw_paper
+
+        return paper
+
+    def extract_full_text(self, paper: Paper) -> str:
+        """Extract full text from a paper's stored raw data"""
+        if not hasattr(paper, '_raw_paper'):
+            return None
+
+        raw_paper = paper._raw_paper
+        try:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                full_text = pool.submit(extract_text_from_pdf, raw_paper).result(timeout=PDF_EXTRACT_TIMEOUT)
+        except TimeoutError:
+            logger.warning(f"PDF extraction timed out for {paper.title}")
+            full_text = None
+        if full_text is None:
+            full_text = extract_text_from_tar(raw_paper)
+
+        return full_text
 
 def extract_text_from_pdf(paper: ArxivResult) -> str | None:
     with TemporaryDirectory() as temp_dir:

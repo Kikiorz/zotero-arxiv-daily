@@ -1,0 +1,51 @@
+zotero:
+  user_id: ${oc.env:ZOTERO_ID}
+  api_key: ${oc.env:ZOTERO_KEY}
+  include_path: null
+
+email:
+  sender: ${oc.env:SENDER}
+  receiver: ${oc.env:RECEIVER}
+  smtp_server: smtp.qq.com
+  smtp_port: 465
+  sender_password: ${oc.env:SENDER_PASSWORD}
+
+llm:
+  api:
+    key: ${oc.env:OPENAI_API_KEY}
+    base_url: ${oc.env:OPENAI_API_BASE}
+  generation_kwargs:
+    model: deepseek-chat
+    max_tokens: 1536
+  language: English
+
+reranker:
+  local:
+    model: jinaai/jina-embeddings-v5-text-nano
+    encode_kwargs:
+      task: retrieval
+      prompt_name: document
+  tag_weights:
+    ⭐⭐⭐⭐⭐: 2.5
+    ⭐⭐⭐⭐: 2.3
+    ⭐⭐⭐: 2.0
+    ⭐⭐: 1.5
+    ⭐: 1.2
+  diversity:
+    enabled: true
+    bonus_strength: 0.3
+
+source:
+  arxiv:
+    category: ["cs.AI","cs.CV","cs.LG","cs.CL","cs.RO","cs.SY","cs.CE"]
+    include_cross_list: true
+    skip_pdf_extraction: false  # 不跳过，但会用两阶段筛选
+
+executor:
+  send_empty: false
+  max_workers: 16
+  max_paper_num: 50  # 最终推荐 50 篇
+  pre_filter_num: 200  # 先用 abstract 筛选出 200 篇，再提取 PDF
+  reranker: local
+  debug: ${oc.env:DEBUG,null}
+  source: ['arxiv']
