@@ -181,12 +181,18 @@ Return ONLY the Python list, nothing else.""",
             )
             affiliations = affiliations.choices[0].message.content
 
-            affiliations = re.search(r'\[.*?\]', affiliations, flags=re.DOTALL).group(0)
-            affiliations = json.loads(affiliations)
+            # Try to extract JSON array
+            json_match = re.search(r'\[.*?\]', affiliations, flags=re.DOTALL)
+            if json_match:
+                affiliations = json.loads(json_match.group(0))
+            else:
+                # If no JSON found, try to parse the whole response
+                affiliations = json.loads(affiliations)
+
             affiliations = list(dict.fromkeys(affiliations))  # Remove duplicates while preserving order
             affiliations = [str(a) for a in affiliations]
 
-            return affiliations
+            return affiliations if affiliations else None
     
     def generate_affiliations(self, openai_client:OpenAI,llm_params:dict) -> Optional[list[str]]:
         try:
